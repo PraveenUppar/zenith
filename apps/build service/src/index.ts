@@ -1,4 +1,4 @@
-import { client } from "./redis.js";
+import { client, publisher } from "./redis.js";
 import { downloadS3Folder } from "./aws";
 import { buildProject } from "./utils";
 import { copyFinalDist } from "./aws";
@@ -22,6 +22,9 @@ async function main() {
       console.log("Uploading dist folder...");
       await copyFinalDist(id);
       console.log("Deployment Complete!");
+
+      await publisher.hSet("status", id, "deployed");
+      console.log(`Deployment ${id} is live!`);
     } catch (error) {
       console.error("Error processing queue:", error);
       await new Promise((r) => setTimeout(r, 1000));
