@@ -26,19 +26,6 @@ Zenith is a scalable, distributed deployment platform that mimics the core funct
 - **Microservices Architecture:** Three independent services communicating through S3 and Redis.
 - **Monorepo with Workspaces:** All services managed in a single repo using npm workspaces.
 
-## Tech Stack
-
-| Layer              | Technology                         |
-| :----------------- | :--------------------------------- |
-| **Language**       | TypeScript (Node.js)               |
-| **Framework**      | Express.js                         |
-| **Orchestration**  | Docker & Docker Compose            |
-| **Architecture**   | Microservices (Monorepo)           |
-| **Queue System**   | Redis (Upstash / Local)            |
-| **Object Storage** | AWS S3                             |
-| **Deployment**     | AWS EC2 / DigitalOcean Droplet     |
-| **Libraries**      | Simple-Git, AWS-SDK v3, mime-types |
-
 ## System Architecture
 
 ```mermaid
@@ -54,6 +41,19 @@ graph TD
     Browser[Browser] -->|project-id.domain.com| Request[Request Handler :3001]
     Request -->|Fetch files| S3
 ```
+
+## Tech Stack
+
+| Layer              | Technology                         |
+| :----------------- | :--------------------------------- |
+| **Language**       | TypeScript (Node.js)               |
+| **Framework**      | Express.js                         |
+| **Orchestration**  | Docker & Docker Compose            |
+| **Architecture**   | Microservices (Monorepo)           |
+| **Queue System**   | Redis (Upstash / Local)            |
+| **Object Storage** | AWS S3                             |
+| **Deployment**     | AWS EC2 / DigitalOcean Droplet     |
+| **Libraries**      | Simple-Git, AWS-SDK v3, mime-types |
 
 ## Installation
 
@@ -113,13 +113,6 @@ node apps/request-handler/dist/index.js
 
 1. **Launch a VPS** — AWS EC2 (t3.small recommended) or DigitalOcean Droplet running Ubuntu.
 2. **Install Docker & Docker Compose** on the server.
-3. **Add Swap Memory** (critical for cheap servers):
-   ```bash
-   sudo fallocate -l 1G /swapfile &&
-   sudo chmod 600 /swapfile &&
-   sudo mkswap /swapfile &&
-   sudo swapon /swapfile
-   ```
 
 ### Deploy
 
