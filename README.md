@@ -1,7 +1,5 @@
-<h1 align="center">Zenith</h1>
-
 <p align="center">
-  Deployment as a Service — Your own mini Vercel
+  <img src="docs/banner.png" alt="Zenith Logo" />
 </p>
 
 <p align="center">
