@@ -1,98 +1,171 @@
-# Zenith : Deployment as a Service
+<h1 align="center">Zenith</h1>
 
-A scalable, distributed system that mimics the core functionality of Vercel. This platform allows users to deploy web projects via GitHub URLs, automatically builds them in a containerized environment, and serves them via custom subdomains.
+<p align="center">
+  Deployment as a Service — Your own mini Vercel
+</p>
 
-## Table of Contents
+<p align="center">
+  <img src="https://img.shields.io/github/issues/PraveenUppar/Zenith" alt="Issues" />
+  <img src="https://img.shields.io/github/last-commit/PraveenUppar/Zenith" alt="Last Commit" />
+</p>
 
-- [Tech Stack](#tech-stack)
-- [Screen Recording](#screen-recording)
-- [Environment Variables](#environment-variables)
-- [Going Live](#going-live)
+---
+
+## Description
+
+Zenith is a scalable, distributed deployment platform that mimics the core functionality of **Vercel**. Paste a GitHub repo URL, and Zenith will clone it, build it inside a Docker container, upload the artifacts to S3, and serve the site on a custom subdomain — all automatically.
+
+🔗 **Demo Video:** [Watch on Google Drive](https://drive.google.com/file/d/1k1Eu60vR_z3x7omq-2VDyS0RY70C56P0/view?usp=sharing)
+
+## Features
+
+- **One-Click Deploy:** Submit a GitHub URL and get a live site in seconds.
+- **Containerized Builds:** Every build runs inside Docker for isolation and reproducibility.
+- **Custom Subdomains:** Each deployment is served at `<project-id>.yourdomain.com`.
+- **S3 Artifact Storage:** Source code and build output are stored in AWS S3.
+- **Redis Build Queue:** Deployments are queued via Redis for reliable, async processing.
+- **SPA Fallback:** The request handler falls back to `index.html` for client-side routing.
+- **Microservices Architecture:** Three independent services communicating through S3 and Redis.
+- **Monorepo with Workspaces:** All services managed in a single repo using npm workspaces.
 
 ## Tech Stack
 
-- **Language:** TypeScript (Node.js)
-- **Framework:** Express.js
-- **Orchestration:** Docker & Docker Compose
-- **Architecture:** Microservices (Monorepo)
-- **Queue System:** Redis (Upstash / Local)
-- **Object Storage:** AWS S3 (for source code and build artifacts)
-- **Deployment Target:** AWS EC2 / DigitalOcean Droplet
-- **Tools:** Simple-Git, AWS-SDK
+| Layer              | Technology                         |
+| :----------------- | :--------------------------------- |
+| **Language**       | TypeScript (Node.js)               |
+| **Framework**      | Express.js                         |
+| **Orchestration**  | Docker & Docker Compose            |
+| **Architecture**   | Microservices (Monorepo)           |
+| **Queue System**   | Redis (Upstash / Local)            |
+| **Object Storage** | AWS S3                             |
+| **Deployment**     | AWS EC2 / DigitalOcean Droplet     |
+| **Libraries**      | Simple-Git, AWS-SDK v3, mime-types |
 
+## System Architecture
 
-## Screen Recording
-
-
-https://drive.google.com/file/d/1k1Eu60vR_z3x7omq-2VDyS0RY70C56P0/view?usp=sharing
-
----
-
-## Environment Variables
-
+```mermaid
+graph TD
+    User[User] -->|POST /deploy with GitHub URL| Upload[Upload Service :3000]
+    Upload -->|Clone repo & upload source| S3[(AWS S3)]
+    Upload -->|Push project ID| Redis[(Redis Queue)]
+    Redis -->|Pop job| Build[Build Service]
+    Build -->|Download source| S3
+    Build -->|npm install & npm run build| Build
+    Build -->|Upload dist/| S3
+    Build -->|Set status = deployed| Redis
+    Browser[Browser] -->|project-id.domain.com| Request[Request Handler :3001]
+    Request -->|Fetch files| S3
 ```
-# AWS Credentials
 
+## Installation
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/PraveenUppar/Zenith.git
+cd Zenith
+```
+
+### 2. Environment Setup
+
+Create a `.env` file in the project root:
+
+```env
+# AWS Credentials
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
-AWS_REGION=us-east-1
+AWS_REGION=ap-south-1
 
 # Redis Connection
-
-UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_URL=your_redis_url
 ```
 
----
+### 3. Run with Docker Compose (Recommended)
+
+```bash
+docker-compose up -d
+```
+
+This starts all three services:
+
+| Service         | Port | Description               |
+| :-------------- | :--- | :------------------------ |
+| Upload Service  | 3000 | Accepts deploy requests   |
+| Request Handler | 3001 | Serves deployed sites     |
+| Build Service   | —    | Background queue consumer |
+
+### 4. Local Development (Without Docker)
+
+```bash
+# Install all dependencies (from root)
+npm install
+
+# Build all services
+npm run build --workspaces
+
+# Start each service in separate terminals
+node apps/upload-service/dist/index.js
+node apps/build-service/dist/index.js
+node apps/request-handler/dist/index.js
+```
 
 ## Going Live
-We use a VPS approach to handle resource-heavy build processes that often timeout on serverless platforms.
 
-### The Server Setup
-**AWS:** Launch an EC2 Instance (t2.micro is free tier, but t3.small is better for building). Use Ubuntu.
-SSH into it: 
-```
-ssh ubuntu@<your-server-ip>
-```
-**Install Docker:** Run the commands to install Docker and Docker Compose on Ubuntu.
+### Server Setup
 
-### Critical Step: Add Swap Memory
-**Why?** `npm install` consumes lots of RAM. A cheap server has 512MB or 1GB RAM. NPM will crash it.
-**Fix:** Create a "Swap File" (fake RAM on the hard drive):
-```
-sudo fallocate -l 1G /swapfile &&
-sudo chmod 600 /swapfile &&
-sudo mkswap /swapfile &&
-sudo swapon /swapfile
-```
+1. **Launch a VPS** — AWS EC2 (t3.small recommended) or DigitalOcean Droplet running Ubuntu.
+2. **Install Docker & Docker Compose** on the server.
+3. **Add Swap Memory** (critical for cheap servers):
+   ```bash
+   sudo fallocate -l 1G /swapfile &&
+   sudo chmod 600 /swapfile &&
+   sudo mkswap /swapfile &&
+   sudo swapon /swapfile
+   ```
 
-### Deployment Steps
-1. **Clone your code** on the server:
-```
-   git clone <your-repo-url>
-```
-3. **Secrets:** Create a `.env` file on the server with your real AWS keys and Redis URL.
-4. **Run:**
-```
-   docker-compose up -d
+### Deploy
+
+```bash
+git clone https://github.com/PraveenUppar/Zenith.git
+cd Zenith
+# Create .env with your real AWS keys and Redis URL
+docker-compose up -d
 ```
 
-### The DNS Magic (Wildcards)
-This is the final piece. You need `http://project-id.yourdomain.com` to work.
+### DNS Configuration
 
-1. Go to your domain provider
-2. **A Record (`@`):** Point `yourdomain.com` to your VPS IP Address
-3. **A Record (`*`):** Create a wildcard record `*` pointing to the same VPS IP Address
+Set up **wildcard DNS** so `<project-id>.yourdomain.com` resolves to your server:
 
-### The Reverse Proxy (Nginx)
-Right now, your user has to type `http://domain.com:3000`. That's ugly. We want port 80.
-**Nginx routes:**
+| Record Type | Host | Value       |
+| :---------: | :--: | :---------- |
+|      A      | `@`  | Your VPS IP |
+|      A      | `*`  | Your VPS IP |
 
-- `api.yourdomain.com` → Forward to Local Port 3000 (Upload Service)
-- `*.yourdomain.com` → Forward to Local Port 3001 (Request Handler)
+### Reverse Proxy (Nginx)
 
-**Update Docker Compose:** Add an Nginx container or install Nginx directly on the host.
-**Config:** Configure `nginx.conf` to proxy pass `server_name *.yourdomain.com` to `http://localhost:3001`.
+Route traffic from port 80 to the correct service:
 
-**Simpler Alternative for MVP:** Change your `docker-compose.yml` so the Request Handler binds to port 80 directly (`"80:3001"`). Then point your wildcard DNS to the server. _(Note: You can only have one service on port 80, so your Upload API might need to move to `api.yourdomain.com` or stay on port 3000)_.
+- `api.yourdomain.com` → `localhost:3000` (Upload Service)
+- `*.yourdomain.com` → `localhost:3001` (Request Handler)
+
+> **Quick Alternative:** Bind the Request Handler directly to port 80 (`"80:3001"` in `docker-compose.yml`) and keep the Upload API on port 3000.
+
+## Contributing
+
+Contributions are welcome! To get started:
+
+1. Fork the repository.
+2. Create a new branch (`git checkout -b feature/your-feature`).
+3. Commit your changes (`git commit -m 'Add your feature'`).
+4. Push to the branch (`git push origin feature/your-feature`).
+5. Open a Pull Request.
+
+## Support
+
+If you encounter any issues or have questions, please [open an issue](https://github.com/PraveenUppar/Zenith/issues) on GitHub.
+
+## Project Status
+
+This project is actively maintained. Contributions, feedback, and suggestions are always welcome!
 
 ---
